@@ -1,17 +1,36 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Version>1.1.0</Version>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Title>Markitdown.CSharp</Title>
+    <Authors>Fabio Fernandes</Authors>
+    <Company>Fabio Fernandes</Company>
+    <Description>This is a .net free rewrite for microsoft markitdown package, to be applied in .net projects</Description>
+    <RepositoryUrl>https://github.com/FabioSFernandes/markitdown.cshasp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>dotnet;csharp;gratuito;mit;free;tokenization;documentation;portability;ai;embeddings</PackageTags>
+    <PackageReleaseNotes>1.1.0: RTF converter (RtfPipe), DOCX namespace/table fix, Tesseract OCR path fix, MkTool default tessdata path. Multi-target net8.0/net9.0/net10.0.</PackageReleaseNotes>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/FabioSFernandes/markitdown.cshasp</PackageProjectUrl>
+    <Copyright>MIT, based in Markitdown utility</Copyright>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Class1.cs" />
     <Compile Include="ConversionOptions.cs" />
     <Compile Include="DocumentConverter.cs" />
     <Compile Include="MarkItDown.cs" />
+    <Compile Include="MarkItDownBuilder.cs" />
     <Compile Include="MarkItDownOptions.cs" />
     <Compile Include="StreamInfo.cs" />
   </ItemGroup>
@@ -25,19 +44,34 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.4.1" />
     <PackageReference Include="ExcelDataReader" Version="3.8.0" />
     <PackageReference Include="ExcelDataReader.DataSet" Version="3.8.0" />
     <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
-    <PackageReference Include="Mammoth" Version="1.11.0" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.3.0" />
-    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="10.0.0" />
     <PackageReference Include="MsgReader" Version="6.0.6" />
     <PackageReference Include="ReverseMarkdown" Version="4.7.1" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.0" />
+    <PackageReference Include="RtfPipe" Version="2.0.7677.4303" />
+    <PackageReference Include="Tesseract" Version="5.2.0" />
     <PackageReference Include="Ude.NetStandard" Version="1.2.0" />
     <PackageReference Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Per-TFM versions for ASP.NET Core packages -->
+    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.11" Condition="'$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="9.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.0" />
   </ItemGroup>
 
 </Project>

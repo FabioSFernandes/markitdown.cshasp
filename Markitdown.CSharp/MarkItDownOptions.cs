@@ -20,6 +20,17 @@ public sealed class MarkItDownOptions
 
     public string? ExifToolPath { get; init; }
 
+    /// <summary>
+    /// Path to the folder that contains the "tessdata" directory (with e.g. eng.traineddata).
+    /// Same as Tesseract's TESSDATA_PREFIX. When set, image conversion will run OCR on images.
+    /// </summary>
+    public string? TesseractTessDataPath { get; init; }
+
+    /// <summary>
+    /// Tesseract language code (e.g. "eng", "por"). Default is "eng" when not set.
+    /// </summary>
+    public string? TesseractLang { get; init; }
+
     public string? StyleMap { get; init; }
 
     public IAudioTranscriptionService? AudioTranscriptionService { get; init; }

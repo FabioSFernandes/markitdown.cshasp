@@ -1,7 +1,6 @@
 using System.Text;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Presentation;
 using DocumentFormat.OpenXml.Drawing;
 using MarkItDown.CSharp.Interfaces;
@@ -160,7 +159,7 @@ public sealed class PptxConverter : DocumentConverter
     {
         var placeholder = shape.NonVisualShapeProperties?
             .ApplicationNonVisualDrawingProperties?
-            .GetFirstChild<PlaceholderShape>();
+            .GetFirstChild<P.PlaceholderShape>();
 
         var type = placeholder?.Type?.Value;
         return type == PlaceholderValues.Title || type == PlaceholderValues.CenteredTitle;
@@ -249,4 +248,3 @@ public sealed class PptxConverter : DocumentConverter
         return $"![{caption}]({imageReference})";
     }
 }
-

@@ -1,4 +1,5 @@
 using System.Text;
+using MarkItDown.CSharp.Interfaces;
 
 namespace MarkItDown.CSharp.Exceptions;
 
@@ -53,13 +54,13 @@ public sealed class FileConversionException : MarkItDownException
 
 public sealed class FailedConversionAttempt
 {
-    public FailedConversionAttempt(DocumentConverter converter, Exception? exception)
+    public FailedConversionAttempt(IDocumentConverter converter, Exception? exception)
     {
         Converter = converter;
         Exception = exception;
     }
 
-    public DocumentConverter Converter { get; }
+    public IDocumentConverter Converter { get; }
 
     public Exception? Exception { get; }
 }

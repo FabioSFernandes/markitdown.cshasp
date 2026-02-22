@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 using MarkItDown.CSharp.Exceptions;
+using MarkItDown.CSharp.Interfaces;
 using System.Linq;
 
 namespace MarkItDown.CSharp.Converters;
@@ -17,11 +18,11 @@ public sealed class ZipConverter : DocumentConverter
         ".zip",
     };
 
-    private readonly MarkItDown _markItDown;
+    private readonly IConversionEngine _engine;
 
-    public ZipConverter(MarkItDown markItDown)
+    public ZipConverter(IConversionEngine engine)
     {
-        _markItDown = markItDown;
+        _engine = engine;
     }
 
     public override bool Accepts(Stream fileStream, StreamInfo streamInfo, ConversionOptions options)
@@ -68,7 +69,7 @@ public sealed class ZipConverter : DocumentConverter
 
             try
             {
-                var result = await _markItDown.ConvertStreamAsync(buffer, entryInfo, options, cancellationToken)
+                var result = await _engine.ConvertStreamAsync(buffer, entryInfo, options, cancellationToken)
                     .ConfigureAwait(false);
 
                 builder.AppendLine($"## File: {entry.FullName}\n");

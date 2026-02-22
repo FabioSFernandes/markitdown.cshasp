@@ -1,11 +1,16 @@
-using System.Collections.Concurrent;
+using MarkItDown.CSharp.Interfaces;
 
 namespace MarkItDown.CSharp;
 
-public abstract class DocumentConverter
+public abstract class DocumentConverter : IDocumentConverter
 {
+    /// <inheritdoc />
+    public virtual IReadOnlyList<string>? SupportedExtensions => null;
+
+    /// <inheritdoc />
     public abstract bool Accepts(Stream fileStream, StreamInfo streamInfo, ConversionOptions options);
 
+    /// <inheritdoc />
     public abstract Task<DocumentConverterResult> ConvertAsync(
         Stream fileStream,
         StreamInfo streamInfo,

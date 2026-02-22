@@ -11,18 +11,21 @@ using Ude;
 
 namespace MarkItDown.CSharp;
 
-public sealed class MarkItDown : IDisposable
+public sealed class MarkItDown : IDisposable, IConverterRegistry, IConversionEngine
 {
     private const double PrioritySpecific = 0.0;
     private const double PriorityGeneric = 10.0;
 
     private readonly HttpClient _httpClient;
     private readonly List<ConverterRegistration> _converters = new();
+    private readonly Dictionary<string, List<ConverterRegistration>> _convertersByExtension = new(StringComparer.OrdinalIgnoreCase);
     private readonly ILlmClient? _llmClient;
     private readonly string? _llmModel;
     private readonly string? _llmPrompt;
     private readonly string? _styleMap;
     private readonly string? _exifToolPath;
+    private readonly string? _tesseractTessDataPath;
+    private readonly string? _tesseractLang;
     private readonly IAudioTranscriptionService? _audioTranscriptionService;
     private readonly IEnumerable<IMarkItDownPlugin>? _plugins;
     private readonly bool _ownsHttpClient;
@@ -52,6 +55,8 @@ public sealed class MarkItDown : IDisposable
         _styleMap = options.StyleMap;
         _audioTranscriptionService = options.AudioTranscriptionService;
         _exifToolPath = ResolveExifToolPath(options.ExifToolPath);
+        _tesseractTessDataPath = options.TesseractTessDataPath;
+        _tesseractLang = options.TesseractLang;
 
         if (options.EnableBuiltins is null or true)
         {
@@ -90,10 +95,11 @@ public sealed class MarkItDown : IDisposable
         RegisterConverter(new XlsxConverter());
         RegisterConverter(new XlsConverter());
         RegisterConverter(new PptxConverter());
+        RegisterConverter(new PdfConverter());
+        RegisterConverter(new RtfConverter());
         RegisterConverter(new AudioConverter());
         RegisterConverter(new ImageConverter());
         RegisterConverter(new IpynbConverter());
-        RegisterConverter(new PdfConverter());
         RegisterConverter(new OutlookMsgConverter());
         RegisterConverter(new EpubConverter());
         RegisterConverter(new CsvConverter());
@@ -116,9 +122,37 @@ public sealed class MarkItDown : IDisposable
         _pluginsEnabled = true;
     }
 
-    public void RegisterConverter(DocumentConverter converter, double priority = PrioritySpecific)
+    public void RegisterConverter(IDocumentConverter converter, double priority = PrioritySpecific)
     {
-        _converters.Insert(0, new ConverterRegistration(converter, priority));
+        var registration = new ConverterRegistration(converter, priority);
+        _converters.Insert(0, registration);
+
+        var extensions = converter.SupportedExtensions;
+        if (extensions is not null && extensions.Count > 0)
+        {
+            foreach (var ext in extensions)
+            {
+                var normalized = NormalizeExtension(ext);
+                if (string.IsNullOrEmpty(normalized))
+                    continue;
+                if (!_convertersByExtension.TryGetValue(normalized, out var list))
+                {
+                    list = new List<ConverterRegistration>();
+                    _convertersByExtension[normalized] = list;
+                }
+                list.Add(registration);
+            }
+        }
+    }
+
+    private static string? NormalizeExtension(string? extension)
+    {
+        if (string.IsNullOrWhiteSpace(extension))
+            return null;
+        var s = extension.Trim();
+        if (s.Length > 0 && s[0] != '.')
+            s = "." + s;
+        return s.ToLowerInvariant();
     }
 
     public Task<DocumentConverterResult> ConvertAsync(
@@ -264,12 +298,13 @@ public sealed class MarkItDown : IDisposable
         CancellationToken cancellationToken)
     {
         var attempts = new List<FailedConversionAttempt>();
-        var sorted = _converters.OrderBy(c => c.Priority).ToList();
+        var sortedAll = _converters.OrderBy(c => c.Priority).ToList();
         var initialPosition = stream.CanSeek ? stream.Position : 0;
 
         foreach (var guess in guesses.Concat(new[] { new StreamInfo() }))
         {
-            foreach (var registration in sorted)
+            var convertersToTry = GetConvertersForGuess(guess, sortedAll);
+            foreach (var registration in convertersToTry)
             {
                 var converter = registration.Converter;
                 if (!stream.CanSeek)
@@ -314,7 +349,19 @@ public sealed class MarkItDown : IDisposable
         throw new UnsupportedFormatException("No converters could handle the provided stream.");
     }
 
-    private bool SafeAccepts(DocumentConverter converter, Stream stream, StreamInfo info, ConversionOptions options)
+    private IReadOnlyList<ConverterRegistration> GetConvertersForGuess(StreamInfo guess, List<ConverterRegistration> sortedAll)
+    {
+        var normalizedExt = NormalizeExtension(guess.Extension);
+        if (string.IsNullOrEmpty(normalizedExt) || !_convertersByExtension.TryGetValue(normalizedExt, out var byExt))
+            return sortedAll;
+
+        var byExtOrdered = byExt.OrderBy(c => c.Priority).ToList();
+        var set = new HashSet<IDocumentConverter>(byExtOrdered.Select(c => c.Converter));
+        var rest = sortedAll.Where(c => !set.Contains(c.Converter)).ToList();
+        return byExtOrdered.Concat(rest).ToList();
+    }
+
+    private bool SafeAccepts(IDocumentConverter converter, Stream stream, StreamInfo info, ConversionOptions options)
     {
         var position = stream.CanSeek ? stream.Position : 0;
         try
@@ -353,6 +400,14 @@ public sealed class MarkItDown : IDisposable
         if (!string.IsNullOrWhiteSpace(_exifToolPath) && !merged.Contains("exiftool_path"))
         {
             merged.Set("exiftool_path", _exifToolPath);
+        }
+        if (!string.IsNullOrWhiteSpace(_tesseractTessDataPath) && !merged.Contains("tesseract_tessdata_path"))
+        {
+            merged.Set("tesseract_tessdata_path", _tesseractTessDataPath);
+        }
+        if (!string.IsNullOrWhiteSpace(_tesseractLang) && !merged.Contains("tesseract_lang"))
+        {
+            merged.Set("tesseract_lang", _tesseractLang);
         }
         if (_audioTranscriptionService is not null && !merged.Contains("audio_transcription_service"))
         {
@@ -610,7 +665,7 @@ public sealed class MarkItDown : IDisposable
         return null;
     }
 
-    private sealed record ConverterRegistration(DocumentConverter Converter, double Priority);
+    private sealed record ConverterRegistration(IDocumentConverter Converter, double Priority);
 
     private sealed record MimeDetectionResult(string MimeType, string? Extension, bool IsText);
 }

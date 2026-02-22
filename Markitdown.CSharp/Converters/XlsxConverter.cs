@@ -73,4 +73,3 @@ public sealed class XlsxConverter : DocumentConverter
 
     private static string Escape(string value) => value.Replace("\r", " ").Replace("\n", " ");
 }
-

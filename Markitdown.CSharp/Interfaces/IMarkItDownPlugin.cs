@@ -1,7 +1,9 @@
+using MarkItDown.CSharp;
+
 namespace MarkItDown.CSharp.Interfaces;
 
 public interface IMarkItDownPlugin
 {
-    void RegisterConverters(MarkItDown markItDown, ConversionOptions options);
+    void RegisterConverters(IConverterRegistry registry, ConversionOptions options);
 }
 

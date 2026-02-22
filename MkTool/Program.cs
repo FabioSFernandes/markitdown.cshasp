@@ -20,7 +20,8 @@ internal static class MkTool
 
         try
         {
-            using var markItDown = new MarkItDownClient();
+            var options = BuildMarkItDownOptions();
+            using var markItDown = new MarkItDownClient(options);
             Console.WriteLine($"[DEBUG] Starting conversion of: {source}");
             var result = await ConvertAsync(markItDown, source).ConfigureAwait(false);
             Console.WriteLine($"[DEBUG] Conversion completed, markdown length: {result.Markdown.Length}");
@@ -39,6 +40,11 @@ internal static class MkTool
             if (!string.IsNullOrWhiteSpace(result.Title))
             {
                 Console.WriteLine($"Detected title: {result.Title}");
+            }
+
+            if (IsImageFile(source) && !IsOcrConfigured())
+            {
+                Console.Error.WriteLine("Hint: Set TESSDATA_PREFIX to the folder containing tessdata for OCR (e.g. \"C:\\Program Files\\Tesseract-OCR\"). See README.");
             }
 
             return 0;
@@ -115,6 +121,47 @@ Stack Trace:
         return 1;
     }
 
+    private static bool IsImageFile(string path)
+    {
+        var ext = Path.GetExtension(path);
+        return string.Equals(ext, ".png", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(ext, ".jpg", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(ext, ".jpeg", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Default Tesseract path (parent of tessdata) used when TESSDATA_PREFIX is not set.</summary>
+    private const string DefaultTesseractPath = @"t:\tools\Tesseract-OCR";
+
+    private static string? GetTesseractPrefix()
+    {
+        var fromEnv = Environment.GetEnvironmentVariable("TESSDATA_PREFIX");
+        if (!string.IsNullOrWhiteSpace(fromEnv))
+        {
+            var tessDataFolder = Path.Combine(fromEnv.Trim(), "tessdata");
+            if (Directory.Exists(tessDataFolder))
+                return fromEnv.Trim();
+        }
+        var defaultTessData = Path.Combine(DefaultTesseractPath, "tessdata");
+        if (Directory.Exists(defaultTessData))
+            return DefaultTesseractPath;
+        return null;
+    }
+
+    private static bool IsOcrConfigured() => GetTesseractPrefix() is not null;
+
+    private static MarkItDownOptions BuildMarkItDownOptions()
+    {
+        var tessPrefix = GetTesseractPrefix();
+        if (tessPrefix is null)
+            return new MarkItDownOptions();
+
+        return new MarkItDownOptions
+        {
+            TesseractTessDataPath = tessPrefix,
+            TesseractLang = Environment.GetEnvironmentVariable("TESSERACT_LANG") ?? "eng",
+        };
+    }
+
     private static async Task<DocumentConverterResult> ConvertAsync(MarkItDownClient markItDown, string source)
     {
         if (File.Exists(source) || LooksLikeLocalPath(source))
@@ -124,7 +171,6 @@ Stack Trace:
             {
                 throw new FileNotFoundException($"File '{localPath}' was not found.", localPath);
             }
-
             return await markItDown.ConvertLocalAsync(localPath).ConfigureAwait(false);
         }
 

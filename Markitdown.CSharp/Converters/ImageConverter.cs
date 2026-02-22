@@ -2,6 +2,7 @@ using System.Text;
 using MarkItDown.CSharp.Converters.Utilities;
 using MarkItDown.CSharp.Interfaces;
 using System.Linq;
+using Tesseract;
 
 namespace MarkItDown.CSharp.Converters;
 
@@ -39,6 +40,34 @@ public sealed class ImageConverter : DocumentConverter
         CancellationToken cancellationToken = default)
     {
         var builder = new StringBuilder();
+
+        if (fileStream.CanSeek)
+        {
+            fileStream.Seek(0, SeekOrigin.Begin);
+        }
+
+        var tessDataPath = options.Get<string>("tesseract_tessdata_path");
+        var tessLang = options.Get<string>("tesseract_lang") ?? "eng";
+        var rawExt = streamInfo.Extension ?? ".png";
+        if (rawExt.Length > 0 && rawExt[0] != '.')
+        {
+            rawExt = "." + rawExt;
+        }
+        var imageExtension = AcceptedExtensions.Contains(rawExt) ? rawExt : ".png";
+        var ocrText = await RunOcrIfAvailableAsync(fileStream, tessDataPath, tessLang, imageExtension, cancellationToken)
+            .ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(ocrText))
+        {
+            builder.AppendLine("### Text in image (OCR)");
+            builder.AppendLine(ocrText.Trim());
+            builder.AppendLine();
+        }
+
+        if (fileStream.CanSeek)
+        {
+            fileStream.Seek(0, SeekOrigin.Begin);
+        }
+
         var exiftoolPath = options.Get<string>("exiftool_path");
         var metadata = await ExifToolUtility.ReadMetadataAsync(fileStream, exiftoolPath, cancellationToken)
             .ConfigureAwait(false);
@@ -83,6 +112,60 @@ public sealed class ImageConverter : DocumentConverter
         }
 
         return new DocumentConverterResult(builder.ToString().Trim());
+    }
+
+    private static async Task<string?> RunOcrIfAvailableAsync(
+        Stream imageStream,
+        string? tessDataPath,
+        string lang,
+        string fileExtension,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(tessDataPath) || !Directory.Exists(tessDataPath))
+            return null;
+
+        var tessDataFolder = Path.Combine(tessDataPath.Trim(), "tessdata");
+        if (!Directory.Exists(tessDataFolder))
+            return null;
+
+        string? tempPath = null;
+        try
+        {
+            if (!imageStream.CanSeek)
+            {
+                return null;
+            }
+
+            imageStream.Seek(0, SeekOrigin.Begin);
+            tempPath = Path.Combine(Path.GetTempPath(), $"markitdown_ocr_{Guid.NewGuid():N}{fileExtension}");
+            await using (var file = File.Create(tempPath))
+            {
+                await imageStream.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
+            }
+
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    // TesseractEngine expects the path to the tessdata folder (containing .traineddata files), not its parent.
+                    using var engine = new TesseractEngine(tessDataFolder, lang, EngineMode.Default);
+                    using var img = Pix.LoadFromFile(tempPath);
+                    using var page = engine.Process(img);
+                    return page.GetText()?.Trim();
+                }
+                catch
+                {
+                    return null;
+                }
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (tempPath != null && File.Exists(tempPath))
+            {
+                try { File.Delete(tempPath); } catch { /* ignore */ }
+            }
+        }
     }
 
     private static async Task<string?> CreateCaptionAsync(
