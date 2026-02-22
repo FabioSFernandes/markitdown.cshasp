@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <Version>1.1.0</Version>
+    <Version>1.0.2</Version>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <DebugType>none</DebugType>
@@ -19,7 +19,7 @@
     <RepositoryUrl>https://github.com/FabioSFernandes/markitdown.cshasp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>dotnet;csharp;gratuito;mit;free;tokenization;documentation;portability;ai;embeddings</PackageTags>
-    <PackageReleaseNotes>1.1.0: RTF converter (RtfPipe), DOCX namespace/table fix, Tesseract OCR path fix, MkTool default tessdata path. Multi-target net8.0/net9.0/net10.0.</PackageReleaseNotes>
+    <PackageReleaseNotes>1.0.2: RTF converter (RtfPipe), DOCX namespace/table fix, Tesseract OCR path fix, MkTool default tessdata path. Multi-target net8.0/net9.0/net10.0.</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/FabioSFernandes/markitdown.cshasp</PackageProjectUrl>
     <Copyright>MIT, based in Markitdown utility</Copyright>
